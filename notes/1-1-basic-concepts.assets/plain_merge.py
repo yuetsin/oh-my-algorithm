@@ -18,6 +18,6 @@ def plain_merge(array_a: list, array_b: list) -> list:
     if pointer_a != length_a:
         result += array_a[pointer_a:]
     elif pointer_b != length_b:
-        result += array_b[pointer_b]
+        result += array_b[pointer_b:]
 
     return result
