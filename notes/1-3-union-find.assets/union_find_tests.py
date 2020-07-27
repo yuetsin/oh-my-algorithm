@@ -6,8 +6,8 @@ version = 'naive'
 
 if version == 'naive':
     from union_find_naive import UnionFindSets
-elif version == 'basic':
-    from union_find_basic import UnionFindSets
+elif version == 'optimized':
+    from union_find_optimized import UnionFindSets
 else:
     exit(-1)
 
