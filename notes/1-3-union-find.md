@@ -23,7 +23,7 @@ public:
 
 只有两个对外可见的方法：
 
-* `Union`，将两个元素所在的并查集合并为一个。
+* `Union`，将两个并查集合并为一个。
 * `Find`，提供一个元素，返回该元素所在的那个集合名称。
 
 > 这个 `union_find_sets` 包含的是**并查集**的集合。
@@ -117,7 +117,7 @@ class UnionFindSets:
 
 ![image-20200727205826646](1-3-union-find.assets/image-20200727205826646.png)
 
-#### 更优化实现
+#### 基于树的笨蛋实现
 
 能否实现得更好呢？我们来试着用「树」的概念来优化一下算法。
 
@@ -131,3 +131,53 @@ class UnionFindSets:
 
 ![image-20200727211056318](1-3-union-find.assets/image-20200727211056318.png)
 
+这里，很显然地，`find` 方法的时间复杂度完全取决于这个节点在树中的深度。而平均的 `find` 复杂度则视树的形态而定。对于一棵非常良好、均匀的树，平均的 `find` 复杂度应该在 $O(\log n)$ 级别；但假如这棵树构造得非常差，以至于退化成了「链表」（每个节点都没有超过一个的子节点），那样平均的 `find` 复杂度就退化到了 $O(n)$ 级别了。
+
+因此，如何设计 `union` 算法就成了优化这种结构的重中之重。假如我们采用最简单的思路，将某一节点的 `parent` 节点 ID 设定为另一个节点以进行 `union`（这样可以在 $O(1)$ 时间内完成），那样很容易造成树越来越长，最後导致 `find` 的复杂度爆炸。
+
+![image-20200729083307837](1-3-union-find.assets/image-20200729083307837.png)
+
+因此，我们有必要在 `Union` 时多做一点事情，优化一下树的结构，让 `Find` 少花点时间。
+
+#### 权重树实现
+
+实际上，我们有一个简单的办法可以避免我们的树退化。那就是，始终将高度较矮的树当作高度较高的树的子树。
+
+> Make the root of the smaller tree the child of the root of the larger tree.
+
+将「一棵较高的树」作为「一棵较矮的树」的子树，会导致结果树的高度增加 1。而反过来就不会增加树的高度。
+
+从数学上来证明，我们可以说，采用权重树实现来对任意 $n$ 个节点进行 UFS 操作，则结果树的高度一定不会超过 $\lfloor \log_2 n \rfloor$。
+
+此时，`Union` 的耗时是 $O(1)$，而 `Find` 的耗时则是 $O(\log n)$。
+
+#### 最後的优化
+
+为了减少 `Find` 的耗时，我们可以定期优化树的结构。
+
+因为我们采用 `payload` 数组来存储树结构，因此我们的树不必拘泥于「二叉」。
+
+![image-20200729091853613](1-3-union-find.assets/image-20200729091853613.png)
+
+例如，进行这样的树变换就可以大大降低 `Find` 的复杂度——让一部分较深的叶子节点直接指向根节点。
+
+这里就不做实现了。
+
+### 效率测试
+
+```shell
+done # 笨蛋实现
+Total time running <function run_tests at 0x1005998b0>: 8.720962047576904 seconds
+done # 优化实现
+Total time running <function run_tests at 0x1005998b0>: 8.580347061157227 seconds
+done # 树实现
+Total time running <function run_tests at 0x1005998b0>: 0.2534818649291992 seconds
+done # 权重树实现
+Total time running <function run_tests at 0x1005998b0>: 0.037947893142700195 seconds
+```
+
+总的来说，对 $n$ 个元素组成的元素做 $\dfrac n 2$ 次 `Union` 和 $\dfrac n 2$ 次 `Find`，最好的实现可以达到 $O(n \log n)$ 的时间复杂度。
+
+名人名言：
+
+While a sequence of $n$ operations does not technically run in linear time, you can’t get much closer.
