@@ -66,7 +66,7 @@ $$
 
 ### Answer
 
-![image-20200806162823658](05-induction.assets/image-20200806162823658.png)
+![image-20200806162823658](03-induction.assets/image-20200806162823658.png)
 
 这个算法的思路如下：
 
