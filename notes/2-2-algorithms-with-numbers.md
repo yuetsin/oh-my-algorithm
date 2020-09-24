@@ -1,0 +1,432 @@
+# Lecture 2
+
+> LI Guoqiang's
+
+涉及到数字的「算法」。
+
+## Numberst
+
+### Representation
+
+数学中的自然数由 Peano Axioms 定义。
+
+例如，用十进制表示写作 $1024$ 的数字，在计算机中的二进制表示就是 `0100 0000 0000`。
+
+目前，几乎没有计算机的数字采用变长字节流存储。换言之，能处理的数字是有上限的。
+
+一种常见的无上限整数实现，是这样的：
+
+```python
+class LongLongInt:
+    length: uint_64
+    digits: List[bool]
+```
+
+即，通过一个 `length` 来记录字节流的长度，以及一个数位缓冲区来变相表示超长的数字。
+
+### Costs
+
+处理一个数字的代价…是多少？
+
+对于一个自然人来说，读、写数字 $N$ 的代价是 $O(\lg N)$。
+
+> 因为大部分人都有十根手指，爱用十进制。
+
+如果存在其他用七进制的外星人，那么他们的数字表示代价大概就是 $O(\log_7 N)$。
+
+换句话说，读写一个数字的代价，取决于在特定 $k$ 进制下的数字表达位数。不妨泛泛地将其记作 $n = \log N$。
+
+> 考虑到换底公式 $\log_b N = \dfrac {\log_a N} {\log_a b}$，而 $\log_a b$ 是常数，所以改换进制不会引起复杂度的改变。
+
+那么，我们普通地对一个数字做加法的时间复杂度是 $O(n)$（只要对每一个数）。
+
+做乘法相当于做 $n$ 次加法（列竖式计算的话），所以复杂度应该是 $O(n^2)$。
+
+但是对于计算机来说，是有点可悲的。所能处理的整数都是定长的，不论是 32 位、64 位、（将来的）128 位机器。因此，要对 17 或是 1700000000 进行计算，所耗费的时间都只是固定的 Cycles，而不会因为高位都是 0 而变快。
+
+因此通常来说，当我们描述一个计算机算法——给出一个整数 $k$时，我们实际上的意思是——给出一个固定长度（如 32 位、64 位之类的）的比特串。对这个整数做加法、乘法的时间不会引起大小而改变——基本操作。
+
+### Operations
+
+下面，我们更加精确地讨论一下运算的问题。
+
+#### Addition
+
+加法——能更好吗？
+
+![image-20200924125404915](2-2-algorithms-with-numbers.assets/image-20200924125404915.png)
+
+按照一开始就知道的算法，把每一位的数字和进位加起来、取模、进位…就这么一直做到头。
+
+显然，算出每一位（及其 Carry 位）的耗时是 $O(1)$ 的。因此这种算法的时间复杂度跟结果的位数直接相关。也就是，$O(n)$。
+
+能做得更好吗？实际上要把结果写出来都需要耗费 $O(n)$ 的时间。因此可以说不存在更好的算法了。
+
+#### Subtraction
+
+一样的。只不过是在计算每一位时，不采用 $a + b + \mathrm{carry}$ 的方式，而是 $a - b - \mathrm{carry}$ 的方式。
+
+> 这里的 Carry 理解成借位，或者是值为 -1 的逆进位都好。
+
+复杂度上跟 Addition 一致。没有什么好说的。
+
+#### Multiplication
+
+把两个 $n$ 位的数字乘起来，耗费显然是 $O(n^2)$。
+
+![image-20200924125838604](2-2-algorithms-with-numbers.assets/image-20200924125838604.png)
+
+因为要进行 $n$ 次简单的一位乘法。而每一次 $n \times 1$ 位乘法的时间复杂度也是 $O(n)$。
+
+> 尽管对于二进制来说，$n \times 1$ 位乘法要做的其实就是选择「照搬」或「填入全 0」而已。但就是这件事也要 $O(n)$。
+
+所以总共是 $O(n^2)$。
+
+#### Multiplication, by Al Khwarizmi
+
+花拉子米的乘法。
+
+举个例子：要计算 $11 \times 13$。那么，把他们写成一排。
+
+![image-20200924130658615](2-2-algorithms-with-numbers.assets/image-20200924130658615.png)
+
+然後，把左边的数字折半（总是向下取整），右边的数字加倍。
+
+![image-20200924130755468](2-2-algorithms-with-numbers.assets/image-20200924130755468.png)
+
+一直这么做，直到左边的数字变成 1。
+
+![image-20200924130811224](2-2-algorithms-with-numbers.assets/image-20200924130811224.png)
+
+然後，把那些「左边数字是偶数」的列删去。
+
+![image-20200924130837247](2-2-algorithms-with-numbers.assets/image-20200924130837247.png)
+
+把右边的数字加起来，结果就是 $11 \times 13 = 143$。
+
+![image-20200924130859524](2-2-algorithms-with-numbers.assets/image-20200924130859524.png)
+
+倒是一个非常适合编程的算法……
+
+```python
+def mult(a: int, b: int) -> int:
+    ret = 0
+    
+    while a >= 1:
+        if a % 2:
+            ret += b
+        a //= 2
+        b *= 2
+    
+    return ret
+```
+
+#### Multiplication, á la Françis
+
+又是诡异的乘法算法：
+
+```python
+def mult(x: int, y: int) -> int:
+    if y == 0:
+        return 0
+    z = mult(x, y // 2)
+    if y % 2:
+        return 2 * z
+    else:
+        return x + 2 * z
+```
+
+这种算法实际上是上一种乘法的变种，基于下面的递推式：
+$$
+x \times y = \left\{  
+             \begin{array}{**lr**}  
+             2 (x \times \lfloor \dfrac y 2 \rfloor), & \mathrm{if}\ \ y \ \ \mathrm{ is\ even} \\  
+             x + 2 (x \times \lfloor \dfrac y 2 \rfloor), & \mathrm{if}\ \ y \ \ \mathrm{ is\ odd}
+             \end{array}  
+\right.
+$$
+其正确性是显然的。
+
+因此，Al Khwarizmi 也好，á la Françis 也好，他们都是一种算法。
+
+时间复杂度呢？
+
+首先，迭代进行的次数是 $\log_2 N$。因为每次迭代，左边的数字都会折半。因此循环（或者递归）只会进行 $\log_2 N$ 次。也就是（粗略地说）$n$ 次。
+
+而每一次迭代需要进行的操作有：
+
+* 判断奇偶
+* 除以 2
+* 乘以二
+* 一次加法（可能需要）
+
+第一件事可以理解成判定 `x & 0x1`。第二件事就是 `x >> 1`。第三件就是 `x << 1`。这些事情都是常数时间复杂度的。
+
+问题在于那一次可能的加法。如果 $y$ 永远是偶数，那就好了。每一次都不必进行加法，时间复杂度缩小到 $O(n)$ 了。
+
+> 那就是，$2^m \times 2^n$ 的特殊情况。等于是求 $m + n$ 的代价了。
+
+但是，按照最坏情况来分析，这个算法仍然是 $O(n^2)$ 时间复杂度的。
+
+有办法做得更好吗？
+
+#### Multiplication, Optimized
+
+高斯在研究复数的乘法时，考虑到了这个式子：
+$$
+(a + b\mathrm{i})(c + d\mathrm{i}) = ac - bd + (bc + ad)\mathrm{i}
+$$
+这个式子的形式对实数也成立：
+$$
+bc + ad = (a + b)(c + d) - ac - bd
+$$
+而我们知道对于 $k$ 进制来说，$k^m \times k^n$ 计算起来非常快。因此又有下面这个式子：
+$$
+(a \times 2^{\frac n 2} + b) \times (c \times 2^{\frac n 2} + d) =  ac \times 2^n + ((a - c) \times (b - d) + ac + bd) \times 2^{\frac n 2} + bd
+$$
+突然发现，原来 $n$ 规模的乘法，现在被拆分成了 3 个 $\dfrac n 2$ 规模的算法。又因为 $\log_2 3 \lt 2$，因此相比原来的算法有进步。总的复杂度降低到了 $O(n^{log_2 3})$，大约是 $O(n^{1.59})$。
+
+同时，这些更小规模的乘法一样也可以用这种方式加速。实际的复杂度还能更低。
+
+> 请去看 1.6 Divide and Conquer 中的 Example / Big Integer Multiplication 一节。
+
+## Modular Arithmetic
+
+> 模运算
+
+### Definition
+
+数学里，整数是无限多的。不存在一个最大的整数 $K$。但是，在模运算中，我们强行限制其大小。
+
+例如，我们规定「不存在大于等于 17 的数」。大于等于 17 的数字 $x$ 全部用 $x \mod 17$ 替换。
+
+在 $\pmod{17}$ 的前提下，会出现一些反常的正确式子：
+
+* $x \equiv x + 17 \pmod{17}$
+* $14 \times 2 \equiv 11 \pmod {17}$
+
+同样，$x \equiv y \pmod{N}$ 也不能说明 $x = y$，而只能说 $(x - y)$ 可以被 $N$ 整除。
+
+### Rules
+
+下面给出一些跟常见算法有关的规则。
+
+如果 $x \equiv x' \pmod{N}$、$y \equiv y' \pmod{N}$，那么就有
+$$
+x + y \equiv x' + y' \pmod{N}
+$$
+和
+$$
+xy \equiv x'y' \pmod{N}
+$$
+存在。
+
+也就是说，如果我们想要得到 $x y \pmod{N}$ 的值，并不需要实际去计算 $xy$，然後对 $N$ 取模，而是先对 $x$、$y$ 取模，对模做乘法，再取模得到结果。
+
+> 差异就是，要做乘法运算的规模急剧地缩小了。
+
+同时，模运算也遵循良好的三定律：
+$$
+x + (y + z) \equiv (x + y) + z \pmod{N}
+$$
+
+> 结合律（Associativity）。
+
+$$
+xy \equiv yx
+$$
+
+> 交换律（Commutativity）。
+
+$$
+x(y + z) \equiv xy + xz
+$$
+
+> 分配律（Distributivity）。
+
+另外，在运算中的任意时刻取模，结果都是正确的。
+$$
+2^{345} \equiv (2^5)^{69} \equiv 32^{69} \equiv 1^{69} \equiv 1 \pmod{31}
+$$
+
+> 由于有 $xy \equiv x'y' \pmod{N}$，可以自然地推出 $x^M \equiv (x \mod N)^M \pmod{N}$。
+
+> 但是切不可以拿指数幂取模，那就完全不对了。
+
+### Operations
+
+> 会有什么不一样吗？
+
+#### Addition (Modular)
+
+显然，我们只需要考虑两个介于 $0$ 和 $N - 1$ 地整数求和，因为超过这个范围的整数都可以通过取模归到这一类里。
+
+那么，加和之後的结果会落在 $0$ 和 $2(N - 1)$ 内。$2(N - 1) < 2N$，因此如果最後的结果超出了 $N - 1$，也只需要减去 $N$ 就可以了。
+
+> 这个步骤只需要花费 $O(\log N)$ 的时间。也就是，$O(n)$。
+
+#### Multiplication (Modular)
+
+乘法的范围也被限定在了 $0$ 和 $N - 1$ 之间（最大的位数记作 $n$）。因此，最大的乘积结果也不过是 $(N - 1) ^2$，位长也不过是 $2n$。
+
+> 基于 $\log_2 (N - 1) ^2 = 2\log_2 (N - 1) \le 2n$。
+
+所以，最後的时间复杂度也就是 $O(n^2)$。
+
+#### Exponentiation (Modular)
+
+Exponentiation，也就是计算 $x^y$ 这样的表达式。
+
+很遗憾，$x^y \pmod{N}$ 的计算相比于 $x^y$ 并没有什么简化。
+
+用公式 $x^M \equiv (x \mod N)^M \pmod{N}$，只能缩小底数，无法缩小指数。
+
+但是众所周知，指数爆炸的原因是「指数太大」，这样操作没有办法抑制爆炸趋势。
+
+而且，$x^y$ 的结果跟 $x$、$y$ 的规模完全不是一个比例。即便对于很小的底数和幂数，都是爆炸性的增长。
+
+例如，两个 19 位的数进行幂指运算，结果的规模是
+$$
+(2^{19})^{2^{19}} = 2^{9961472}
+$$
+差不多是一千万位！
+
+### Algorithms (for Exponentiation)
+
+#### First Idea
+
+第一个主意就是，做 $y$ 次乘法。
+
+考虑到我们已经有成熟的、$O(n^2)$ 复杂度的模乘法运算，我们可以按照这样的策略：
+$$
+x \rightarrow x^2 \rightarrow x^3 \rightarrow \dots \rightarrow x^y \pmod{N}
+$$
+这样，每一次的时间耗费是 $O(n^2)$，而一共要做 $y$ 次。
+
+> 是真真正正的 $y$ 次，而不是什么 $y\mod N$。
+
+绝望地放弃这种方法吧。
+
+#### Second Idea
+
+一次只是乘 $x$，太浪费了，增长太慢。
+
+我们取一个 $z = \lfloor \log y \rfloor$，然後向 $z$ 指数增长地逼近，如何呢？
+
+> 从 $z$ 到 $y$ 的过程是简单的，回到 First Idea 的方法就好了。
+
+$$
+x \rightarrow x^2 \rightarrow x^4 \rightarrow \dots \rightarrow x^z \rightarrow x^{z + 1} \rightarrow \dots \rightarrow x^y \pmod{N}
+$$
+
+这样，我们只需要（大概）$\log y$ 次迭代就能逼近 $x^y \pmod N$ 了。
+
+总的时间复杂度降低到了 $O(n^2 \log y)$。
+
+真好。
+
+#### Implementation
+
+下面是我们的 MODEXP 算法：
+
+```python
+def mod_mul(x: int, y: int, N: int) -> int:
+    return ((x % N) * (y % N)) % N
+
+def mod_exp(x: int, y: int, N: int) -> int:
+    if y == 0:
+        return 1
+    z = mod_exp(x, y // 2, N)
+    if y % 2:
+        return mod_mul(z, mod_mul(x, z, N), N);
+    else:
+        return mod_mul(z, z, N);
+```
+
+这里，每一次运算的耗时是 $O(n^2)$。而这种迭代一共要运行 $O(\log y)$ 次。
+
+## oh-my-gcd
+
+GCD，也就是 Greatest Common Divisor（最大公约数）。
+
+给出两个整数 $x$ 和 $y$，要求他们的最大公约数 $\gcd{x, y}$。有什么办法呢？
+
+### Euclid's
+
+#### Idea
+
+欧几里得说，有下面这个事实存在：
+$$
+\gcd(x, y) = \gcd(x \mod y), y)
+$$
+很容易证明，只要 $x \ge y$，就有 $\gcd(x, y) = \gcd(x - y, y)$ 存在。
+
+> 只需要我们补充一点定义：$0$ 和任何一个正整数 $k$ 的最大公约数都是 $k$。
+
+反复做这件事情，结果就是原式。
+
+用当代程序语言来写，就是这样：
+
+```python
+def euclid_gcd(x: int, y: int) -> int:
+    if y == 0:
+        return x
+    return euclid_gcd(y, x % y)
+```
+
+#### Complexity
+
+要分析复杂度，我们得先得到下面一个引理：
+$$
+\mathrm{if\ } a \ge b \ge 0, \mathrm{then\ } a \mathrm{\ mod\ } b \lt \dfrac a 2
+$$
+证明非常简单，分类讨论。
+
+* 如果 $b \le \dfrac a 2$，那么显然模 $b$ 的结果小于 $\dfrac a 2$；
+* 如果 $b \gt \dfrac a 2$，那么 $a \mathrm{\ mod\ } b = a - b \lt \dfrac a 2$。
+
+也就是说，每一次 $a \mathrm{\ mod\ } b$ 都会至少将 $a$ 折半。
+
+那么，假定给出的 $a$ 和 $b$ 都是 $n$ Bit 的数字，那么这个循环最多只会运行 $2n$ 次。
+
+而每一次内部取模运算的时间复杂度是 $O(n^2)$，因此最终时间复杂度是 $O(n^3)$。
+
+### Verify
+
+#### NP, and co-NP
+
+假设我们给出两个数 $x$ 和 $y$，要判断其最大公约数是否是 $d$。这该怎么办？
+
+> 首先这不是一个 NP 问题。因为不可能普遍地给出一个单例来「验证」$d$ 是否就是那个最大公约数。
+>
+> 但是，这是一个 co-NP 问题。如果我们能给出一个 $d' \gt d$，并验证 $d'$ 也是公约数，就能反驳 $d$ 不是那个最大公约数。
+>
+> 废话到这里结束。
+
+这是个 co-NP 问题。但是他是 NP 问题吗？
+
+即，是否有一个多项式时间的算法，判明 $d$ 是否是 $x$、$y$ 的最大公约数？
+
+仅仅验证 $d$ 能整除 $x$ 和 $y$ 是不够的。没法确定是不是最大的那个。
+
+> 因为 2.1 里讲过，NP 不太可能 = co-NP。因此，不太可能存在这样的多项式时间算法。
+
+但是，我们并不是毫无办法。
+
+#### Lemma
+
+抛个引理。
+
+* 如果 $d$ 是 $x$、$y$ 的公约数，而且 $d = ax + by$ 对某两个整数 $a$、$b$ 成立，那么 $d$ 就一定是 $x$、$y$ 的最大公约数。
+
+证明很轻易，两步走：
+
+* 首先，$d \le \gcd (x, y)$
+	* 这是显然的吧。
+* 其次，$d \ge \gcd(x, y)$
+	* 因为既然 $\gcd(x, y)$ 可以整除 $x$、$y$，他一定也可以整除 $d = ax + by$。
+
+综上所述，$d = \gcd(x, y)$。
+
+> 当然，满足 $d = ax + by$ 的这一组 $(a, b)$ 怎么找，没有给出任何说明。这也只是一个充分条件而已。
+

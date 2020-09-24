@@ -1,6 +1,6 @@
 # Lecture 1
 
-> Li Guoqiang's
+> LI Guoqiang's
 
 ## Algorithm
 
